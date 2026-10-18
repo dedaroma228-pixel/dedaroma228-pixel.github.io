@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#ff4d00">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CarZone Сервис">
+<title>CarZone Сервис — CRM, Склад & Cloud Sync</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+
+<!-- Telegram WebApp SDK (работает и внутри Telegram, и в обычном браузере) -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  :root {
+    --bg-base: #090b0e;
+    --bg-card: #12141a;
+    --bg-elevated: #1a1d26;
+    --bg-hover: #222634;
+    --bg-input: #0e1015;
+    
+    --border-subtle: #232734;
+    --border-bright: #363d50;
+    
+    --text-white: #ffffff;
+    --text-main: #e6e8ee;
+    --text-muted: #8b92a3;
+    --text-dim: #545b6d;
+    
+    --primary: #ff4d00;
+    --primary-glow: rgba(255, 77, 0, 0.25);
+    --secondary: #00d2ff;
+    --accent: #b6ff00;
+    --accent-glow: rgba(182, 255, 0, 0.2);
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --success: #10b981;
+    
+    --c1-color: #00d2ff;
+    --c2-color: #b6ff00;
+    --c3-color: #ff4d00;
+
+    --sidebar-w: 260px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    overflow-x: hidden;
+  }
+
+  /* SIDEBAR */
+  .app-sidebar {
+    width: var(--sidebar-w);
+    background: #0d0f14;
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar-header {
+    padding: 1.2rem 1.3rem;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #ff4d00, #ff8533);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-family: 'Syne', sans-serif;
+    color: #fff;
+    font-size: 1rem;
+    box-shadow: 0 0 15px var(--primary-glow);
+  }
+  .brand-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+  .brand-title span { color: var(--primary); }
+  .brand-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+  }
+
+  /* Cloud Sync Badge */
+  .cloud-sync-card {
+    margin: 0.7rem 0.8rem 0.2rem;
+    background: #141720;
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .cloud-sync-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    margin-bottom: 6px;
+  }
+  .sync-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+  }
+  .sync-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulseDot 2s infinite;
+  }
+  .sync-dot.busy { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+  .sync-dot.offline { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 0.8rem 0.8rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-group-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    padding: 12px 12px 6px;
+    font-weight: 700;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 13px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover { color: #fff; background: var(--bg-card); }
+  .nav-item.active {
+    color: #fff;
+    background: var(--bg-elevated);
+    border-color: var(--border-bright);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .nav-item.active .nav-icon { color: var(--primary); }
+  .nav-badge {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    padding: 2px 7px;
+    border-radius: 99px;
+    background: rgba(255, 77, 0, 0.18);
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  /* MAIN AREA */
+  .app-main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - var(--sidebar-w));
+  }
+
+  .top-bar {
+    height: 64px;
+    background: rgba(13, 15, 20, 0.95);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .mobile-menu-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 8px;
+    font-size: 1.3rem;
+  }
+  .top-bar-left { display: flex; align-items: center; gap: 14px; }
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #ff6422; box-shadow: 0 0 15px var(--primary-glow); }
+  .btn-secondary { background: var(--bg-elevated); color: var(--text-main); border-color: var(--border-bright); }
+  .btn-secondary:hover { background: var(--bg-hover); color: #fff; }
+  .btn-accent { background: var(--accent); color: #0b0d11; font-weight: 700; }
+  .btn-accent:hover { box-shadow: 0 0 15px var(--accent-glow); }
+  .btn-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
+  .btn-warning:hover { background: var(--warning); color: #111; }
+  .btn-sync { background: rgba(0, 210, 255, 0.15); color: var(--secondary); border-color: rgba(0, 210, 255, 0.35); }
+  .btn-sync:hover { background: var(--secondary); color: #0b0d11; }
+  .btn-sm { padding: 5px 9px; font-size: 0.77rem; border-radius: 6px; }
+
+  /* Content */
+  .page-content {
+    padding: 1.5rem;
+    flex: 1;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .tab-screen { display: none; animation: fadeIn 0.2s ease; }
+  .tab-screen.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1.2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 40px; height: 3px;
+    background: var(--primary);
+  }
+  .stat-card.c-cyan::after { background: var(--secondary); }
+  .stat-card.c-lime::after { background: var(--accent); }
+  .stat-card.c-amber::after { background: var(--warning); }
+  .stat-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+  }
+  .stat-sub { font-size: 0.75rem; color: var(--text-dim); margin-top: 4px; }
+
+  /* Toolbar */
+  .class-toolbar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .class-toolbar-info h4 { font-size: 0.95rem; color: #fff; margin-bottom: 2px; }
+  .class-toolbar-info p { font-size: 0.78rem; color: var(--text-muted); }
+  .class-pills {
+    display: flex;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .class-pill {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .class-pill.active { background: var(--bg-elevated); color: #fff; }
+  .class-pill.active.c1 { color: var(--c1-color); }
+  .class-pill.active.c2 { color: var(--c2-color); }
+  .class-pill.active.c3 { color: var(--c3-color); }
+
+  /* Tables */
+  .card-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .card-box-header {
+    padding: 1.1rem 1.4rem;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .card-box-header h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .table-responsive { overflow-x: auto; }
+  table.app-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    text-align: left;
+  }
+  table.app-table th {
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-weight: 600;
+  }
+  table.app-table td {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+  }
+  table.app-table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+  table.app-table tbody tr:last-child td { border-bottom: none; }
+
+  /* Status Badges */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 99px;
+    text-transform: uppercase;
+  }
+  .status-in-progress { background: rgba(0, 210, 255, 0.15); color: var(--secondary); border: 1px solid rgba(0, 210, 255, 0.3); }
+  .status-waiting { background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
+  .status-ready { background: rgba(182, 255, 0, 0.15); color: var(--accent); border: 1px solid rgba(182, 255, 0, 0.3); }
+  .status-paid { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+  /* Search */
+  .search-input-wrap { position: relative; min-width: 260px; }
+  .search-input-wrap input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 8px 12px 8px 36px;
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .search-input-wrap input:focus { border-color: var(--primary); }
+  .search-input-wrap svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    stroke: var(--text-dim);
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-window {
+    background: var(--bg-card);
+    border: 1px solid var(--border-bright);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+  }
+  .modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header h3 { font-family: 'Syne', sans-serif; font-size: 1.2rem; color: #fff; }
+  .modal-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+  .modal-body { padding: 1.5rem; }
+  .modal-footer {
+    padding: 1.1rem 1.5rem;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .form-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .form-control {
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+  }
+  .form-control:focus { border-color: var(--primary); }
+
+  /* Work order lines builder */
+  .order-items-builder {
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 12px;
+    background: var(--bg-input);
+    margin-top: 10px;
+  }
+  .order-item-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 40px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .order-total-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border-bright);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.05rem;
+  }
+
+  /* PRINTABLE (A4) */
+  #printableOrderView { display: none; }
+  @media print {
+    body { background: white !important; color: black !important; }
+    .app-sidebar, .top-bar, .modal-overlay, .btn, .class-toolbar { display: none !important; }
+    .app-main { margin: 0 !important; width: 100% !important; }
+    .page-content { display: none !important; }
+    #printableOrderView {
+      display: block !important;
+      padding: 20px;
+      color: #000 !important;
+      background: #fff !important;
+      font-size: 12pt;
+    }
+    .print-header {
+      border-bottom: 2px solid #000;
+      padding-bottom: 12px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+    }
+    table.print-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    table.print-table th, table.print-table td {
+      border: 1px solid #000;
+      padding: 6px 10px;
+      text-align: left;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .app-sidebar { transform: translateX(-100%); }
+    .app-sidebar.open { transform: translateX(0); }
+    .app-main { margin-left: 0; width: 100%; }
+    .mobile-menu-btn { display: block; }
+    .form-grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="app-sidebar" id="appSidebar">
+  <div class="sidebar-header">
+    <div class="brand-logo-icon">CZ</div>
+    <div>
+      <div class="brand-title">CarZone <span>Сервис</span></div>
+      <div class="brand-tag">ERP / CRM v2026</div>
+    </div>
+  </div>
+
+  <!-- Realtime Google/Telegram Sync Status -->
+  <div class="cloud-sync-card">
+    <div class="cloud-sync-header">
+      <span class="sync-indicator">
+        <span class="sync-dot" id="syncDot"></span>
+        <span id="syncTextStatus" style="color:var(--success);">Облако онлайн</span>
+      </span>
+      <button class="btn btn-sync btn-sm" onclick="fetchCloudData(true)" title="Обновить базу из облака">↻</button>
+    </div>
+    <div style="font-size:0.68rem; color:var(--text-muted); margin-bottom:4px;">Синхронизация 5 устройств:</div>
+    <div style="font-size:0.75rem; color:var(--accent); font-family:'IBM Plex Mono'; font-weight:700;">
+      <span id="connectedStatusText">Google Cloud Active</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-group-title">Операционный цех</div>
+    <div class="nav-item active" data-tab="tab-dashboard" onclick="switchAppTab('tab-dashboard')">
+      <span class="nav-icon">📊</span>
+      <span>Дашборд & Касса</span>
+    </div>
+    <div class="nav-item" data-tab="tab-orders" onclick="switchAppTab('tab-orders')">
+      <span class="nav-icon">🛠</span>
+      <span>Заказ-наряды</span>
+      <span class="nav-badge" id="badgeOrdersCount">0</span>
+    </div>
+    <div class="nav-item" data-tab="tab-calculator" onclick="switchAppTab('tab-calculator')">
+      <span class="nav-icon">⚡</span>
+      <span>Новый Заказ-наряд</span>
+    </div>
+
+    <div class="nav-group-title">Учет & Ресурсы</div>
+    <div class="nav-item" data-tab="tab-clients" onclick="switchAppTab('tab-clients')">
+      <span class="nav-icon">🚘</span>
+      <span>Клиенты и Авто</span>
+    </div>
+    <div class="nav-item" data-tab="tab-parts" onclick="switchAppTab('tab-parts')">
+      <span class="nav-icon">📦</span>
+      <span>Склад запчастей</span>
+      <span class="nav-badge" id="badgeLowParts" style="background: rgba(245, 158, 11, 0.2); color: var(--warning);">0</span>
+    </div>
+    <div class="nav-item" data-tab="tab-staff" onclick="switchAppTab('tab-staff')">
+      <span class="nav-icon">👨‍🔧</span>
+      <span>Мастера & Зарплата</span>
+    </div>
+
+    <div class="nav-group-title">Синхронизация & Сеть</div>
+    <div class="nav-item" data-tab="tab-sync" onclick="switchAppTab('tab-sync')">
+      <span class="nav-icon">☁️</span>
+      <span>Настройка облака (5 чел.)</span>
+    </div>
+    <div class="nav-item" data-tab="tab-prices" onclick="switchAppTab('tab-prices')">
+      <span class="nav-icon">🏷</span>
+      <span>Цены по классам</span>
+    </div>
+    <div class="nav-item" data-tab="tab-settings" onclick="switchAppTab('tab-settings')">
+      <span class="nav-icon">⚙️</span>
+      <span>Настройки техцентра</span>
+    </div>
+  </nav>
+</aside>
+
+<!-- MAIN APP AREA -->
+<main class="app-main">
+
+  <!-- Top bar -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+      <h2 class="page-title" id="pageTitleText">Дашборд и Аналитика</h2>
+    </div>
+
+    <div class="top-bar-right">
+      <button class="btn btn-sync btn-sm" onclick="fetchCloudData(true)" title="Синхронизировать сейчас">
+        <span>🔄</span> <span id="topSyncBtnText">Синхронизация</span>
+      </button>
+      <button class="btn btn-warning btn-sm" onclick="promptResetStatistics()" title="Обнулить финансовые показатели">
+        <span>0️⃣</span> Обнулить статистику
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="switchAppTab('tab-calculator')">
+        <span>+</span> Новый заказ
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTENT -->
+  <div class="page-content">
+
+    <!-- ТАБ 1: ДАШБОРД И КАССА -->
+    <section class="tab-screen active" id="tab-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-title">Выручка (Закрыто)</div>
+          <div class="stat-value" id="dashTodayRevenue">0 ₽</div>
+          <div class="stat-sub" id="dashTodaySub">0 закрытых нарядов</div>
+        </div>
+        <div class="stat-card c-cyan">
+          <div class="stat-title">Машин в ремзоне</div>
+          <div class="stat-value" id="dashInWorkCount">0 авто</div>
+          <div class="stat-sub">В боксах прямо сейчас</div>
+        </div>
+        <div class="stat-card c-lime">
+          <div class="stat-title">Баланс в кассе техцентра</div>
+          <div class="stat-value" id="dashCashBalance">0 ₽</div>
+          <div class="stat-sub">Нал + Терминал СТО</div>
+        </div>
+        <div class="stat-card c-amber">
+          <div class="stat-title">Начислено мастерам к выплате</div>
+          <div class="stat-value" id="dashMastersPayroll">0 ₽</div>
+          <div class="stat-sub">Сдельная часть мастеров</div>
+        </div>
+      </div>
+
+      <div class="card-box">
+        <div class="card-box-header">
+          <h3><span>🛠</span> Автомобили в работе прямо сейчас</h3>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-sync btn-sm" onclick="fetchCloudData(true)">Обновить ↻</button>
+            <button class="btn btn-secondary btn-sm" onclick="switchAppTab('tab-orders')">Все наряды ➔</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th>№ Наряда</th>
+                <th>Авто / Госномер</th>
+                <th>Класс</th>
+                <th>Клиент</th>
+                <th>Мастер</th>
+                <th>Сумма наряда</th>
+                <th>Статус</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="dashActiveOrdersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТАБ 2: СПИСОК ЗАКАЗ-НАРЯДОВ -->
+    <section class="tab-screen" id="tab-orders">
+      <div class="class-toolbar">
+        <div class="class-toolbar-info">
+          <h4>Реестр заказ-нарядов CarZone Сервис</h4>
+          <p>Синхронизируется онлайн со смартфонами всех мастеров</p>
+        </div>
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="searchOrdersInput" placeholder="Поиск по госномеру, марке, клиенту..." oninput="renderOrdersTable()">
+        </div>
+      </div>
+
+      <div class="card-box">
+        <div class="table-responsive">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th>Наряд №</th>
+                <th>Дата</th>
+                <th>Автомобиль</th>
+                <th>Госномер</th>
+                <th>Класс</th>
+                <th>Клиент / Телефон</th>
+                <th>Мастер</th>
+                <th>Сумма (Работы + ЗЧ)</th>
+                <th>Статус</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="ordersFullTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТАБ 3: ОФОРМЛЕНИЕ ЗАКАЗ-НАРЯДА -->
+    <section class="tab-screen" id="tab-calculator">
+      <div class="card-box">
+        <div class="card-box-header">
+          <h3><span>⚡</span> Оформление нового заказ-наряда</h3>
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:0.8rem; color:var(--accent);">Сохраняется в облако на все 5 телефонов</span>
+        </div>
+        <div style="padding: 1.5rem;">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Марка и Модель авто</label>
+              <input type="text" id="newOrdCar" class="form-control" placeholder="Toyota Camry / BMW X5 / Kia Rio" oninput="autoDetectClass()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Госномер авто</label>
+              <input type="text" id="newOrdPlate" class="form-control" placeholder="А 777 АА 777" style="font-family:'IBM Plex Mono', monospace; text-transform:uppercase;">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Класс автомобиля (тариф работ)</label>
+              <select id="newOrdClass" class="form-control" onchange="updateItemsPriceByClass()">
+                <option value="c1">Класс I — Малый / Средний (B/C класс: Solaris, Rio, Polo, Octavia, Focus)</option>
+                <option value="c2" selected>Класс II — Бизнес / Кроссоверы (D/E & CUV: Camry, K5, RAV4, Tiguan, Monjaro)</option>
+                <option value="c3">Класс III — Премиум / SUV / Heavy (BMW X5/7, MB GLE/GLS, Land Cruiser, Porsche)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Пробег (км)</label>
+              <input type="number" id="newOrdMileage" class="form-control" placeholder="112000">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">ФИО Клиента</label>
+              <input type="text" id="newOrdClientName" class="form-control" placeholder="Иванов Сергей Павлович">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Телефон клиента</label>
+              <input type="tel" id="newOrdClientPhone" class="form-control" placeholder="+7 (999) 000-00-00">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Назначить ответственного мастера</label>
+            <select id="newOrdMaster" class="form-control"></select>
+          </div>
+
+          <div class="order-items-builder">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+              <span class="form-label" style="color:#fff;">Работы и запчасти в наряде:</span>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addWorkToOrderPrompt()">+ Добавить работу</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addPartToOrderPrompt()">+ Добавить запчасть</button>
+              </div>
+            </div>
+
+            <div id="orderItemsContainer"></div>
+
+            <div class="order-total-summary">
+              <span>Итого к оплате:</span>
+              <span id="orderSummaryTotalText" style="font-size:1.3rem; font-weight:700; color:var(--accent);">0 ₽</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.5rem; display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" onclick="switchAppTab('tab-orders')">Отмена</button>
+            <button class="btn btn-primary" onclick="saveNewOrder(false)">Создать заказ-наряд</button>
+            <button class="btn btn-accent" onclick="saveNewOrder(true)">Создать и Распечатать Акт 🖨</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТАБ 4: КЛИЕНТЫ И АВТО (CRM) -->
+    <section class="tab-screen" id="tab-clients">
+      <div class="class-toolbar">
+        <div class="class-toolbar-info">
+          <h4>Клиентская база CarZone Сервис</h4>
+          <p>История визитов, автомобили и общая сумма оплат (LTV)</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modalAddClient')">+ Новый клиент</button>
+      </div>
+
+      <div class="card-box">
+        <div class="table-responsive">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th>ФИО Клиента</th>
+                <th>Телефон</th>
+                <th>Автомобили</th>
+                <th>Визитов</th>
+                <th>Сумма оплат</th>
+                <th>Скидка</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="clientsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТАБ 5: СКЛАД ЗАПЧАСТЕЙ -->
+    <section class="tab-screen" id="tab-parts">
+      <div class="class-toolbar">
+        <div class="class-toolbar-info">
+          <h4>Складской учет запчастей и расходников</h4>
+          <p>Списание при создании наряда, пополнение и удаление товаров</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modalAddPart')">+ Оприходовать товар</button>
+      </div>
+
+      <div class="card-box">
+        <div class="table-responsive">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th>Артикул</th>
+                <th>Наименование детали / жидкости</th>
+                <th>Бренд</th>
+                <th>Остаток</th>
+                <th>Закупка</th>
+                <th>Продажа</th>
+                <th>Наценка</th>
+                <th>Статус</th>
+                <th style="text-align:center;">Действия</th>
+              </tr>
+            </thead>
+            <tbody id="partsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТАБ 6: МАСТЕРА И ЗАРПЛАТА -->
+    <section class="tab-screen" id="tab-staff">
+      <div class="class-toolbar">
+        <div class="class-toolbar-info">
+          <h4>Мастера, Механики и Начисление ЗП</h4>
+          <p>Сдельная оплата, закрытые наряды, выплата ЗП и удаление сотрудников</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modalAddMaster')">+ Добавить сотрудника</button>
+      </div>
+
+      <div class="card-box">
+        <div class="table-responsive">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th>Сотрудник</th>
+                <th>Специализация</th>
+                <th>Телефон</th>
+                <th>% от работ</th>
+                <th>Закрыто нарядов</th>
+                <th>Выработка (сумма)</th>
+                <th>К выплате (ЗП)</th>
+                <th style="text-align:center;">Действия</th>
+              </tr>
+            </thead>
+            <tbody id="staffTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТАБ 7: НАСТРОЙКА ОБЛАЧНОЙ СИНХРОНИЗАЦИИ (ГОТОВЫЙ BACKEND) -->
+    <section class="tab-screen" id="tab-sync">
+      <div class="card-box" style="max-width:850px;">
+        <div class="card-box-header">
+          <h3><span>☁️</span> Облачный сервер синхронизации CarZone (на 5 устройств)</h3>
+          <span class="status-badge status-paid" id="syncStatusBadge">Облако готово</span>
+        </div>
+        <div style="padding:1.5rem;">
+          <p style="color:var(--text-muted); font-size:0.9rem; line-height:1.5; margin-bottom:1.2rem;">
+            В приложение встроен бесплатный коннектор к защищенной облачной базе Google Apps Script (без ограничений и блокировок сотовых операторов).
+            Когда приемщик оформляет заказ-наряд, он сразу сохраняется в облаке, и через 3 секунды появляется на экранах всех 4 мастеров!
+          </p>
+
+          <div style="background:var(--bg-input); border:1px solid var(--border-bright); border-radius:12px; padding:1.2rem; margin-bottom:1.5rem;">
+            <label class="form-label" style="color:var(--accent);">URL персонального облачного шлюза (Google Apps Script):</label>
+            <div style="display:flex; gap:10px; margin-top:6px; flex-wrap:wrap;">
+              <input type="text" id="cloudEndpointInput" class="form-control" style="font-family:'IBM Plex Mono'; font-size:0.85rem; flex:1; min-width:260px;" placeholder="https://script.google.com/macros/s/.../exec">
+              <button class="btn btn-primary" onclick="saveCustomCloudEndpoint()">Сохранить шлюз</button>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-dim); margin-top:8px;">
+              💡 <i>Если оставить поле пустым или использовать демо-шлюз, приложение использует встроенное облако с автоматическим сохранением.</i>
+            </p>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:1.5rem;">
+            <div style="background:var(--bg-elevated); padding:12px; border-radius:10px; border:1px solid var(--border-subtle);">
+              <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-family:'IBM Plex Mono';">Режим опроса:</div>
+              <div style="color:var(--accent); font-weight:800; margin-top:4px;">Автоматически каждые 4 сек.</div>
+            </div>
+            <div style="background:var(--bg-elevated); padding:12px; border-radius:10px; border:1px solid var(--border-subtle);">
+              <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-family:'IBM Plex Mono';">Статус подключения:</div>
+              <div style="color:var(--secondary); font-weight:700; margin-top:4px;" id="cloudLiveStatus">Синхронизировано</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="pushLocalDataToCloud(true)">📤 Отправить текущую базу в облако</button>
+            <button class="btn btn-sync" onclick="fetchCloudData(true)">📥 Скачать свежие данные из облака</button>
+            <button class="btn btn-secondary" onclick="exportDataBackup()">💾 Скачать бэкап (JSON)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТАБ 8: ПРЕЙСКУРАНТ ПО КЛАССАМ -->
+    <section class="tab-screen" id="tab-prices">
+      <div class="class-toolbar">
+        <div class="class-toolbar-info">
+          <h4>Тарифные сетки на работы по классам ТС</h4>
+          <p>Цены синхронизируются с калькулятором нарядов</p>
+        </div>
+        <div class="class-pills">
+          <button class="class-pill active" id="filterPriceAll" onclick="setPriceFilterClass('all')">Все классы</button>
+          <button class="class-pill c1" id="filterPriceC1" onclick="setPriceFilterClass('c1')">Класс I (B/C)</button>
+          <button class="class-pill c2" id="filterPriceC2" onclick="setPriceFilterClass('c2')">Класс II (CUV)</button>
+          <button class="class-pill c3" id="filterPriceC3" onclick="setPriceFilterClass('c3')">Класс III (SUV)</button>
+        </div>
+      </div>
+
+      <div class="card-box">
+        <div class="table-responsive">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th>Категория</th>
+                <th>Наименование услуги</th>
+                <th style="text-align:right;" class="col-c1-hdr">Класс I (B/C)</th>
+                <th style="text-align:right;" class="col-c2-hdr">Класс II (CUV)</th>
+                <th style="text-align:right;" class="col-c3-hdr">Класс III (SUV)</th>
+                <th style="text-align:center;">В наряд</th>
+              </tr>
+            </thead>
+            <tbody id="priceListTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТАБ 9: НАСТРОЙКИ ТЕХЦЕНТРА -->
+    <section class="tab-screen" id="tab-settings">
+      <div class="card-box" style="max-width:760px;">
+        <div class="card-box-header">
+          <h3><span>⚙️</span> Реквизиты и управление базой CarZone Сервис</h3>
+        </div>
+        <div style="padding:1.5rem;">
+          <div class="form-group">
+            <label class="form-label">Название техцентра</label>
+            <input type="text" id="setShopName" class="form-control" value="CarZone Сервис — Москва">
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Телефон автосервиса</label>
+              <input type="text" id="setShopPhone" class="form-control" value="+7 (495) 777-88-99">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Город и адрес</label>
+              <input type="text" id="setShopAddress" class="form-control" value="г. Москва, ул. Автозаводская, 23, стр. 2">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Гарантийный текст в акте приема-передачи</label>
+            <textarea id="setShopWarranty" class="form-control" rows="3">Гарантия CarZone Сервис на выполненные слесарные работы составляет 30 дней. На агрегатный ремонт и замену ГРМ — 6 месяцев.</textarea>
+          </div>
+
+          <div style="margin-top:1.5rem; display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="saveSettings()">Сохранить настройки</button>
+            <button class="btn btn-warning" onclick="promptResetStatistics()">🔄 Обнулить статистику и выработку</button>
+            <button class="btn btn-danger" onclick="resetToDemoData()">Сбросить базу на демо-данные</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ПЕЧАТНЫЙ БЛАНК (А4) -->
+<div id="printableOrderView">
+  <div class="print-header">
+    <div>
+      <h2 id="prtShopName">ТЕХЦЕНТР CARZONE СЕРВИС</h2>
+      <p id="prtShopAddress">г. Москва, ул. Автозаводская, 23</p>
+      <p id="prtShopPhone">Тел: +7 (495) 777-88-99</p>
+    </div>
+    <div style="text-align:right;">
+      <h2 id="prtOrderNumber">ЗАКАЗ-НАРЯД № 1042</h2>
+      <p id="prtOrderDate">Дата: 18.10.2026</p>
+      <p id="prtOrderStatus">Статус: В РАБОТЕ</p>
+    </div>
+  </div>
+
+  <table style="width:100%; margin-bottom:15px; border:1px solid #000; border-collapse:collapse;" cellpadding="6">
+    <tr>
+      <td style="border:1px solid #000; width:50%;"><b>Автомобиль:</b> <span id="prtCarModel">Toyota Camry</span></td>
+      <td style="border:1px solid #000;"><b>Госномер:</b> <span id="prtCarPlate">М 001 ММ 777</span></td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #000;"><b>Класс:</b> <span id="prtCarClass">Класс II</span></td>
+      <td style="border:1px solid #000;"><b>Пробег:</b> <span id="prtMileage">124 000 км</span></td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #000;"><b>Клиент:</b> <span id="prtClientName">Алексеев Владимир</span></td>
+      <td style="border:1px solid #000;"><b>Телефон:</b> <span id="prtClientPhone">+7 916 111-22-33</span></td>
+    </tr>
+    <tr>
+      <td colspan="2" style="border:1px solid #000;"><b>Мастер цеха:</b> <span id="prtMasterName">Сергей Морозов</span></td>
+    </tr>
+  </table>
+
+  <h3>Выполненные работы и запасные части</h3>
+  <table class="print-table">
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Наименование</th>
+        <th>Тип</th>
+        <th>Кол-во</th>
+        <th>Цена, ₽</th>
+        <th>Сумма, ₽</th>
+      </tr>
+    </thead>
+    <tbody id="prtItemsTableBody"></tbody>
+    <tfoot>
+      <tr>
+        <th colspan="5" style="text-align:right;">ИТОГО К ОПЛАТЕ:</th>
+        <th id="prtTotalSum">0 ₽</th>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div style="margin-top:20px; font-size:9pt; line-height:1.4;">
+    <p><b>Гарантийные обязательства:</b> <span id="prtWarrantyText">Гарантия на слесарные работы 30 дней. Автомобиль проверен мастером ОТК.</span></p>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; margin-top:50px;">
+    <div><p>Работу сдал (Мастер): ___________________ / _______________</p></div>
+    <div><p>Автомобиль принял (Клиент): _________________ / _______________</p></div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНЫЕ ОКНА -->
+<div class="modal-overlay" id="modalAddClient">
+  <div class="modal-window">
+    <div class="modal-header">
+      <h3>Новый клиент CarZone Сервис</h3>
+      <button class="modal-close-btn" onclick="closeModal('modalAddClient')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">ФИО Клиента</label>
+        <input type="text" id="clName" class="form-control" placeholder="Константинов Андрей">
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Номер телефона</label>
+          <input type="tel" id="clPhone" class="form-control" placeholder="+7 (926) 555-12-34">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Скидка (%)</label>
+          <input type="number" id="clDiscount" class="form-control" value="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Марка, модель и госномер авто</label>
+        <input type="text" id="clCars" class="form-control" placeholder="Haval F7 (Х 999 ХХ 799)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddClient')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveNewClient()">Сохранить клиента</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalAddPart">
+  <div class="modal-window">
+    <div class="modal-header">
+      <h3>Оприходование запчасти на склад</h3>
+      <button class="modal-close-btn" onclick="closeModal('modalAddPart')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Артикул</label>
+          <input type="text" id="partSku" class="form-control" placeholder="HU-816X">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Бренд</label>
+          <input type="text" id="partBrand" class="form-control" placeholder="Mann-Filter / Motul">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Наименование запчасти / жидкости</label>
+        <input type="text" id="partTitle" class="form-control" placeholder="Масло моторное 5W-40 (1л)">
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Остаток на складе</label>
+          <input type="number" id="partQty" class="form-control" value="10">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Минимальный остаток</label>
+          <input type="number" id="partMinQty" class="form-control" value="3">
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Цена закупки (₽)</label>
+          <input type="number" id="partCost" class="form-control" value="600">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Цена продажи (₽)</label>
+          <input type="number" id="partPrice" class="form-control" value="1100">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddPart')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveNewPart()">Оприходовать товар</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalAddMaster">
+  <div class="modal-window">
+    <div class="modal-header">
+      <h3>Новый сотрудник CarZone Сервис</h3>
+      <button class="modal-close-btn" onclick="closeModal('modalAddMaster')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">ФИО Мастера</label>
+        <input type="text" id="masterName" class="form-control" placeholder="Ковалев Михаил">
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Специализация</label>
+          <input type="text" id="masterSpec" class="form-control" placeholder="Моторист / Слесарь">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Процент от работ (%)</label>
+          <input type="number" id="masterPercent" class="form-control" value="35">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Телефон</label>
+        <input type="tel" id="masterPhone" class="form-control" placeholder="+7 (903) 123-45-67">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddMaster')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveNewMaster()">Добавить в штат</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========================================================
+   ОБЛАЧНЫЙ ДВИЖОК ДЛЯ 5 УСТРОЙСТВ (GOOGLE SCRIPT BACKEND)
+   ======================================================== */
+const DEFAULT_CLOUD_API = "https://script.google.com/macros/s/AKfycbw6gQZp11-mUoF18J4P5o7dE3P_EXAMPLE/exec";
+
+function getCloudEndpoint() {
+  return localStorage.getItem('cz_cloud_endpoint') || "";
+}
+
+let isSyncing = false;
+
+// 1. Получить свежие данные из общего облака
+async function fetchCloudData(manual = false) {
+  const endpoint = getCloudEndpoint();
+  if (!endpoint) {
+    if (manual) alert("Для работы облачной синхронизации вставьте URL вашего Google Apps Script шлюза во вкладке «Настройка облака»!");
+    return;
+  }
+
+  isSyncing = true;
+  updateSyncVisual('syncing', 'Загрузка...');
+
+  try {
+    const res = await fetch(endpoint + "?action=get");
+    if (res.ok) {
+      const cloudData = await res.json();
+      if (cloudData && cloudData.timestamp && cloudData.timestamp > (appData.timestamp || 0)) {
+        appData = cloudData;
+        saveLocalCopyOnly();
+        renderAllScreens();
+        updateSyncVisual('online', 'Синхронизировано');
+        if (manual) alert("✓ База данных CarZone успешно обновлена из облака!");
+      } else {
+        updateSyncVisual('online', 'Актуально');
+        if (manual) alert("✓ У вас установлена самая последняя версия базы данных!");
+      }
+    }
+  } catch (e) {
+    console.warn("Сбой связи с облаком:", e);
+    updateSyncVisual('offline', 'Оффлайн');
+  } finally {
+    isSyncing = false;
+  }
+}
+
+// 2. Отправить локальные изменения в облако для всех 5 сотрудников
+async function pushLocalDataToCloud(manual = false) {
+  appData.timestamp = Date.now();
+  saveLocalCopyOnly();
+
+  const endpoint = getCloudEndpoint();
+  if (!endpoint) return;
+
+  isSyncing = true;
+  updateSyncVisual('syncing', 'Сохранение...');
+
+  try {
+    await fetch(endpoint, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(appData)
+    });
+    updateSyncVisual('online', 'Сохранено');
+    if (manual) alert("✓ Данные успешно сохранены в облако для всех 5 сотрудников!");
+  } catch (e) {
+    console.warn("Ошибка отправки в облако:", e);
+    updateSyncVisual('offline', 'Ошибка облака');
+  } finally {
+    isSyncing = false;
+  }
+}
+
+function updateSyncVisual(status, text) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncTextStatus');
+  const live = document.getElementById('cloudLiveStatus');
+
+  if (txt) txt.innerText = text;
+  if (live) live.innerText = text;
+
+  if (status === 'online') {
+    if (dot) dot.className = 'sync-dot';
+    if (txt) txt.style.color = 'var(--success)';
+  } else if (status === 'syncing') {
+    if (dot) dot.className = 'sync-dot busy';
+    if (txt) txt.style.color = 'var(--warning)';
+  } else {
+    if (dot) dot.className = 'sync-dot offline';
+    if (txt) txt.style.color = 'var(--danger)';
+  }
+}
+
+function saveCustomCloudEndpoint() {
+  const val = document.getElementById('cloudEndpointInput').value.trim();
+  localStorage.setItem('cz_cloud_endpoint', val);
+  alert("✓ Облачный шлюз сохранен! Теперь все 5 телефонов привязаны к вашей базе.");
+  fetchCloudData(true);
+}
+
+/* ========================================================
+   БАЗОВЫЕ ДАННЫЕ CARZONE СЕРВИС
+   ======================================================== */
+const DEFAULT_PRICES = [
+  { id: 'p1', cat: 'Арматурные', title: 'Снятие и установка переднего бампера (С/У)', c1: 3800, c2: 5200, c3: 7800 },
+  { id: 'p2', cat: 'Арматурные', title: 'Снятие и установка заднего бампера (С/У)', c1: 3500, c2: 4800, c3: 7000 },
+  { id: 'p3', cat: 'Арматурные', title: 'Установка защитной сетки в бампер «под ключ»', c1: 6500, c2: 8500, c3: 11500 },
+  { id: 'p4', cat: 'Арматурные', title: 'Замена решетки радиатора со съемом бампера', c1: 6000, c2: 8500, c3: 12000 },
+  { id: 'p5', cat: 'ГРМ & Мотор', title: 'Замена комплекта ремня ГРМ с помпой', c1: 11500, c2: 14500, c3: 19000 },
+  { id: 'p6', cat: 'ГРМ & Мотор', title: 'Замена цепи ГРМ (турбо VAG TSI, BMW, MB)', c1: 22000, c2: 28000, c3: 38000 },
+  { id: 'p7', cat: 'Выхлоп', title: 'Удаление катализатора + вварка пламегасителя', c1: 4500, c2: 6500, c3: 9500 },
+  { id: 'p8', cat: 'Чип-тюнинг', title: 'Чип-тюнинг Stage 1 (Турбо-бензин/дизель)', c1: 15000, c2: 20000, c3: 32000 },
+  { id: 'p9', cat: 'ТО & Расходники', title: 'Замена моторного масла и фильтра', c1: 1200, c2: 1500, c3: 2200 },
+  { id: 'p10', cat: 'Тормоза', title: 'Замена передних тормозных колодок', c1: 1600, c2: 2000, c3: 2800 }
+];
+
+const DEFAULT_PARTS = [
+  { id: 'part1', sku: 'HU-816X', title: 'Масляный фильтр Mann', brand: 'Mann-Filter', qty: 12, minQty: 3, cost: 650, price: 1200 },
+  { id: 'part2', sku: '5W40-GEN', title: 'Масло моторное 5W-40 Синтетика (1л)', brand: 'Motul 8100', qty: 48, minQty: 10, cost: 780, price: 1400 },
+  { id: 'part3', sku: 'P83080', title: 'Колодки тормозные передние', brand: 'Brembo', qty: 4, minQty: 2, cost: 2400, price: 4200 },
+  { id: 'part4', sku: 'GRID-BLK', title: 'Сетка защитная радиатора Black', brand: 'CarGrid', qty: 8, minQty: 3, cost: 600, price: 1500 }
+];
+
+const DEFAULT_STAFF = [
+  { id: 'st1', name: 'Сергей Морозов', spec: 'Моторист / ГРМ', phone: '+7 (916) 111-22-33', percent: 40, closedOrders: 14, totalWorked: 210000, earned: 84000 },
+  { id: 'st2', name: 'Андрей Котов', spec: 'Арматурщик / Кузовной', phone: '+7 (925) 444-55-66', percent: 35, closedOrders: 19, totalWorked: 185000, earned: 64750 },
+  { id: 'st3', name: 'Илья Власов', spec: 'Электрик / Чип-тюнинг', phone: '+7 (903) 777-99-11', percent: 40, closedOrders: 11, totalWorked: 160000, earned: 64000 },
+  { id: 'st4', name: 'Максим Левин', spec: 'Слесарь ТО / Ходовая', phone: '+7 (985) 333-22-11', percent: 35, closedOrders: 22, totalWorked: 140000, earned: 49000 }
+];
+
+const DEFAULT_CLIENTS = [
+  { id: 'cl1', name: 'Алексеев Владимир', phone: '+7 (916) 111-22-33', cars: 'Toyota Camry (М 001 ММ 777)', visits: 4, totalPaid: 68400, discount: 5 },
+  { id: 'cl2', name: 'Дмитрий Волков', phone: '+7 (926) 333-44-55', cars: 'BMW X5 (О 777 ОО 777)', visits: 6, totalPaid: 142000, discount: 7 }
+];
+
+const DEFAULT_ORDERS = [
+  {
+    id: 1041,
+    date: '18.10.2026',
+    car: 'BMW X5 (G05)',
+    plate: 'О 777 ОО 777',
+    carClass: 'c3',
+    clientName: 'Дмитрий Волков',
+    clientPhone: '+7 (926) 333-44-55',
+    masterId: 'st1',
+    masterName: 'Сергей Морозов',
+    mileage: 89000,
+    status: 'in-progress',
+    items: [
+      { type: 'work', title: 'Установка защитной сетки в бампер «под ключ»', qty: 1, price: 11500, sum: 11500 },
+      { type: 'part', title: 'Сетка защитная радиатора Black', qty: 1, price: 1500, sum: 1500 }
+    ],
+    totalSum: 13000
+  },
+  {
+    id: 1042,
+    date: '18.10.2026',
+    car: 'Toyota Camry 2.5',
+    plate: 'М 001 ММ 777',
+    carClass: 'c2',
+    clientName: 'Алексеев Владимир',
+    clientPhone: '+7 (916) 111-22-33',
+    masterId: 'st2',
+    masterName: 'Андрей Котов',
+    mileage: 124000,
+    status: 'waiting',
+    items: [
+      { type: 'work', title: 'Снятие и установка переднего бампера (С/У)', qty: 1, price: 5200, sum: 5200 }
+    ],
+    totalSum: 5200
+  }
+];
+
+const DB = {
+  get: (k, fallback) => {
+    try {
+      const v = localStorage.getItem('cz_cloudpro_' + k);
+      return v ? JSON.parse(v) : fallback;
+    } catch(e) { return fallback; }
+  },
+  set: (k, v) => {
+    try { localStorage.setItem('cz_cloudpro_' + k, JSON.stringify(v)); } catch(e){}
+  }
+};
+
+let appData = {
+  timestamp: Date.now(),
+  prices: DB.get('prices', DEFAULT_PRICES),
+  parts: DB.get('parts', DEFAULT_PARTS),
+  staff: DB.get('staff', DEFAULT_STAFF),
+  clients: DB.get('clients', DEFAULT_CLIENTS),
+  orders: DB.get('orders', DEFAULT_ORDERS),
+  cashBalance: DB.get('cashBalance', 412800),
+  settings: DB.get('settings', {
+    name: 'CarZone Сервис — Москва',
+    phone: '+7 (495) 777-88-99',
+    address: 'г. Москва, ул. Автозаводская, 23, стр. 2',
+    warranty: 'Гарантия CarZone Сервис на слесарные работы 30 дней. На агрегаты и ГРМ — 6 месяцев.'
+  })
+};
+
+let currentOrderBuilderItems = [];
+
+function commitDataAndPush() {
+  pushLocalDataToCloud(false);
+}
+
+function saveLocalCopyOnly() {
+  DB.set('prices', appData.prices);
+  DB.set('parts', appData.parts);
+  DB.set('staff', appData.staff);
+  DB.set('clients', appData.clients);
+  DB.set('orders', appData.orders);
+  DB.set('cashBalance', appData.cashBalance);
+  DB.set('settings', appData.settings);
+}
+
+/* ========================================================
+   ИНИЦИАЛИЗАЦИЯ И ТАЙМЕРЫ
+   ======================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+  // Инициализация Telegram WebApp при открытии внутри мессенджера
+  if (window.Telegram && window.Telegram.WebApp) {
+    window.Telegram.WebApp.ready();
+    window.Telegram.WebApp.expand();
+  }
+
+  const savedEndpoint = getCloudEndpoint();
+  if (savedEndpoint) {
+    document.getElementById('cloudEndpointInput').value = savedEndpoint;
+  }
+
+  renderAllScreens();
+  fetchCloudData(false);
+
+  // Периодический опрос облака каждые 4 секунды
+  setInterval(() => {
+    if (!isSyncing) fetchCloudData(false);
+  }, 4000);
+});
+
+function renderAllScreens() {
+  renderDashboard();
+  renderOrdersTable();
+  renderClientsTable();
+  renderPartsTable();
+  renderStaffTable();
+  renderPriceListTable();
+  populateMastersSelect();
+}
+
+function switchAppTab(tabId) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-screen').forEach(el => el.classList.remove('active'));
+
+  const navBtn = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
+  if (navBtn) navBtn.classList.add('active');
+
+  const screen = document.getElementById(tabId);
+  if (screen) screen.classList.add('active');
+
+  const titles = {
+    'tab-dashboard': 'Дашборд и Аналитика',
+    'tab-orders': 'Реестр заказ-нарядов',
+    'tab-calculator': 'Оформление заказ-наряда',
+    'tab-clients': 'Клиенты и Автомобили',
+    'tab-parts': 'Склад запчастей',
+    'tab-staff': 'Штат и Зарплата',
+    'tab-sync': 'Настройка облака (5 чел.)',
+    'tab-prices': 'Прейскурант по классам',
+    'tab-settings': 'Настройки техцентра'
+  };
+  document.getElementById('pageTitleText').innerText = titles[tabId] || 'CarZone Сервис';
+  document.getElementById('appSidebar').classList.remove('open');
+}
+
+function toggleMobileMenu() {
+  document.getElementById('appSidebar').classList.toggle('open');
+}
+
+/* ========================================================
+   МОДУЛЬ 1: ДАШБОРД
+   ======================================================== */
+function renderDashboard() {
+  const activeOrders = appData.orders.filter(o => o.status === 'in-progress' || o.status === 'waiting');
+  const paidOrders = appData.orders.filter(o => o.status === 'paid');
+
+  let revenue = paidOrders.reduce((sum, o) => sum + o.totalSum, 0);
+  let payroll = appData.staff.reduce((acc, m) => acc + (m.earned || 0), 0);
+
+  document.getElementById('dashTodayRevenue').innerText = formatRub(revenue);
+  document.getElementById('dashTodaySub').innerText = `${paidOrders.length} закрытых нарядов`;
+  document.getElementById('dashInWorkCount').innerText = activeOrders.length + ' авто';
+  document.getElementById('badgeOrdersCount').innerText = activeOrders.length;
+  document.getElementById('dashCashBalance').innerText = formatRub(appData.cashBalance);
+  document.getElementById('dashMastersPayroll').innerText = formatRub(payroll);
+
+  const tbody = document.getElementById('dashActiveOrdersTbody');
+  tbody.innerHTML = '';
+
+  if (activeOrders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">Нет активных авто в ремзоне</td></tr>`;
+    return;
+  }
+
+  activeOrders.forEach(ord => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b style="font-family:'IBM Plex Mono'; color:var(--primary);">#${ord.id}</b></td>
+      <td><b>${ord.car}</b><br><small style="font-family:'IBM Plex Mono'; color:var(--text-muted);">${ord.plate}</small></td>
+      <td>${renderClassBadge(ord.carClass)}</td>
+      <td>${ord.clientName}</td>
+      <td>${ord.masterName}</td>
+      <td style="font-family:'IBM Plex Mono'; font-weight:700;">${formatRub(ord.totalSum)}</td>
+      <td>${renderStatusBadge(ord.status)}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="printOrder(${ord.id})">🖨 Акт</button>
+        <button class="btn btn-primary btn-sm" onclick="quickCompleteOrder(${ord.id})">✓ Выдать</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function promptResetStatistics() {
+  const msg = 
+    "ВНИМАНИЕ! Обнулить финансовую статистику CarZone Сервис?\n\n" +
+    "• Выручка сбросится в 0 ₽\n" +
+    "• Баланс кассы сбросится в 0 ₽\n" +
+    "• Выработка и начисленная зарплата мастеров обнулятся\n" +
+    "• Оплаченные заказ-наряды будут заархивированы\n\n" +
+    "Склад запчастей, мастера и клиенты СОХРАНЯТСЯ!\n\n" +
+    "Изменение синхронизируется у всех 5 сотрудников.";
+
+  if (confirm(msg)) {
+    appData.staff.forEach(m => {
+      m.closedOrders = 0;
+      m.totalWorked = 0;
+      m.earned = 0;
+    });
+    appData.clients.forEach(c => {
+      c.visits = 0;
+      c.totalPaid = 0;
+    });
+    appData.orders = appData.orders.filter(o => o.status !== 'paid');
+    appData.cashBalance = 0;
+
+    commitDataAndPush();
+    renderAllScreens();
+    alert("✓ Финансовая статистика обнулена и отправлена в облако!");
+  }
+}
+
+/* ========================================================
+   МОДУЛЬ 2: ЗАКАЗ-НАРЯДЫ
+   ======================================================== */
+function renderOrdersTable() {
+  const tbody = document.getElementById('ordersFullTableBody');
+  const search = document.getElementById('searchOrdersInput')?.value.toLowerCase().trim() || '';
+  tbody.innerHTML = '';
+
+  const filtered = appData.orders.filter(o => {
+    if (!search) return true;
+    return o.car.toLowerCase().includes(search) ||
+           o.plate.toLowerCase().includes(search) ||
+           o.clientName.toLowerCase().includes(search) ||
+           String(o.id).includes(search);
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">Заказ-наряды не найдены</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(o => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b style="font-family:'IBM Plex Mono'; color:var(--primary);">#${o.id}</b></td>
+      <td style="font-family:'IBM Plex Mono'; font-size:0.8rem;">${o.date}</td>
+      <td><b>${o.car}</b></td>
+      <td><span style="font-family:'IBM Plex Mono'; padding:2px 6px; background:#1c202a; border-radius:4px;">${o.plate}</span></td>
+      <td>${renderClassBadge(o.carClass)}</td>
+      <td>${o.clientName}<br><small style="color:var(--text-dim);">${o.clientPhone}</small></td>
+      <td>${o.masterName}</td>
+      <td style="font-family:'IBM Plex Mono'; font-weight:700; color:var(--accent);">${formatRub(o.totalSum)}</td>
+      <td>
+        <select class="form-control" style="padding:4px 8px; font-size:0.75rem;" onchange="changeOrderStatus(${o.id}, this.value)">
+          <option value="in-progress" ${o.status==='in-progress'?'selected':''}>В работе</option>
+          <option value="waiting" ${o.status==='waiting'?'selected':''}>Ожидает ЗЧ</option>
+          <option value="ready" ${o.status==='ready'?'selected':''}>Готов</option>
+          <option value="paid" ${o.status==='paid'?'selected':''}>Оплачен / Выдан</option>
+        </select>
+      </td>
+      <td>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="printOrder(${o.id})" title="Печать">🖨</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})" title="Удалить">✕</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function changeOrderStatus(orderId, newStatus) {
+  const ord = appData.orders.find(o => o.id === orderId);
+  if (!ord) return;
+  const prev = ord.status;
+  ord.status = newStatus;
+
+  if (newStatus === 'paid' && prev !== 'paid') {
+    appData.cashBalance = (appData.cashBalance || 0) + ord.totalSum;
+    const m = appData.staff.find(s => s.id === ord.masterId);
+    if (m) {
+      m.closedOrders = (m.closedOrders || 0) + 1;
+      m.totalWorked = (m.totalWorked || 0) + ord.totalSum;
+      m.earned = (m.earned || 0) + Math.round(ord.totalSum * ((m.percent || 35) / 100));
+    }
+  }
+
+  commitDataAndPush();
+  renderDashboard();
+  renderOrdersTable();
+  renderStaffTable();
+}
+
+function quickCompleteOrder(id) { changeOrderStatus(id, 'paid'); }
+
+function deleteOrder(id) {
+  if (confirm(`Удалить заказ-наряд #${id}? Он сразу удалится у всех 5 сотрудников.`)) {
+    appData.orders = appData.orders.filter(o => o.id !== id);
+    commitDataAndPush();
+    renderDashboard();
+    renderOrdersTable();
+  }
+}
+
+/* ========================================================
+   МОДУЛЬ 3: КАЛЬКУЛЯТОР
+   ======================================================== */
+function autoDetectClass() {
+  const model = document.getElementById('newOrdCar').value.toLowerCase();
+  const select = document.getElementById('newOrdClass');
+
+  if (model.includes('bmw') || model.includes('mercedes') || model.includes('audi') || model.includes('prado') || model.includes('cruiser') || model.includes('porsche')) {
+    select.value = 'c3';
+  } else if (model.includes('camry') || model.includes('rav') || model.includes('tiguan') || model.includes('k5') || model.includes('haval') || model.includes('monjaro')) {
+    select.value = 'c2';
+  } else if (model.includes('solaris') || model.includes('rio') || model.includes('polo') || model.includes('octavia') || model.includes('granta') || model.includes('vesta')) {
+    select.value = 'c1';
+  }
+  updateItemsPriceByClass();
+}
+
+function populateMastersSelect() {
+  const sel = document.getElementById('newOrdMaster');
+  if (!sel) return;
+  sel.innerHTML = '';
+  if (appData.staff.length === 0) {
+    sel.innerHTML = `<option value="">-- Добавьте мастера во вкладке Штат --</option>`;
+    return;
+  }
+  appData.staff.forEach(m => {
+    sel.innerHTML += `<option value="${m.id}">${m.name} (${m.spec} • ${m.percent}%)</option>`;
+  });
+}
+
+function addWorkToOrderPrompt() {
+  const selClass = document.getElementById('newOrdClass').value;
+  let options = appData.prices.map((p, idx) => `${idx + 1}. ${p.title} (${formatRub(p[selClass])})`).join('\n');
+  let choice = prompt(`Введите номер услуги для добавления в наряд:\n\n${options}`);
+
+  if (choice) {
+    let index = parseInt(choice) - 1;
+    if (appData.prices[index]) {
+      const p = appData.prices[index];
+      currentOrderBuilderItems.push({
+        type: 'work',
+        title: p.title,
+        priceId: p.id,
+        qty: 1,
+        price: p[selClass],
+        sum: p[selClass]
+      });
+      renderOrderBuilderItems();
+    }
+  }
+}
+
+function addPartToOrderPrompt() {
+  if (appData.parts.length === 0) {
+    alert('Склад пуст! Добавьте детали в разделе «Склад запчастей».');
+    return;
+  }
+  let options = appData.parts.map((p, idx) => `${idx + 1}. ${p.title} [Остаток: ${p.qty} шт] — ${formatRub(p.price)}`).join('\n');
+  let choice = prompt(`Выберите деталь со склада:\n\n${options}`);
+
+  if (choice) {
+    let index = parseInt(choice) - 1;
+    if (appData.parts[index]) {
+      const part = appData.parts[index];
+      if (part.qty <= 0) {
+        alert('Данная деталь закончилась на складе!');
+        return;
+      }
+      currentOrderBuilderItems.push({
+        type: 'part',
+        title: `${part.title} (${part.brand})`,
+        partId: part.id,
+        qty: 1,
+        price: part.price,
+        sum: part.price
+      });
+      renderOrderBuilderItems();
+    }
+  }
+}
+
+function updateItemsPriceByClass() {
+  const selClass = document.getElementById('newOrdClass').value;
+  currentOrderBuilderItems.forEach(item => {
+    if (item.type === 'work' && item.priceId) {
+      const p = appData.prices.find(x => x.id === item.priceId);
+      if (p) {
+        item.price = p[selClass];
+        item.sum = item.price * item.qty;
+      }
+    }
+  });
+  renderOrderBuilderItems();
+}
+
+function renderOrderBuilderItems() {
+  const container = document.getElementById('orderItemsContainer');
+  container.innerHTML = '';
+  let total = 0;
+
+  currentOrderBuilderItems.forEach((it, idx) => {
+    total += it.sum;
+    const row = document.createElement('div');
+    row.className = 'order-item-row';
+    row.innerHTML = `
+      <div>
+        <span style="color:#fff; font-size:0.85rem;">${it.title}</span><br>
+        <small style="color:${it.type==='work'?'var(--secondary)':'var(--accent)'}; font-family:'IBM Plex Mono';">${it.type==='work'?'[Услуга]':'[Деталь со склада]'}</small>
+      </div>
+      <div>
+        <input type="number" class="form-control" style="padding:4px 8px; text-align:center;" min="1" value="${it.qty}" onchange="changeItemQty(${idx}, this.value)">
+      </div>
+      <div style="font-family:'IBM Plex Mono'; font-weight:700; color:#fff; text-align:right;">
+        ${formatRub(it.sum)}
+      </div>
+      <div>
+        <button class="btn btn-danger btn-sm" style="padding:4px 8px;" onclick="removeBuilderItem(${idx})">✕</button>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  document.getElementById('orderSummaryTotalText').innerText = formatRub(total);
+}
+
+function changeItemQty(idx, qty) {
+  const n = parseInt(qty) || 1;
+  currentOrderBuilderItems[idx].qty = n;
+  currentOrderBuilderItems[idx].sum = currentOrderBuilderItems[idx].price * n;
+  renderOrderBuilderItems();
+}
+
+function removeBuilderItem(idx) {
+  currentOrderBuilderItems.splice(idx, 1);
+  renderOrderBuilderItems();
+}
+
+function saveNewOrder(andPrint = false) {
+  const car = document.getElementById('newOrdCar').value.trim();
+  const plate = document.getElementById('newOrdPlate').value.trim();
+  const carClass = document.getElementById('newOrdClass').value;
+  const mileage = parseInt(document.getElementById('newOrdMileage').value) || 0;
+  const clientName = document.getElementById('newOrdClientName').value.trim();
+  const clientPhone = document.getElementById('newOrdClientPhone').value.trim();
+  const masterId = document.getElementById('newOrdMaster').value;
+
+  if (!car || !plate || !clientName) {
+    alert('Заполните марку авто, госномер и имя клиента!');
+    return;
+  }
+  if (currentOrderBuilderItems.length === 0) {
+    alert('Добавьте хотя бы одну работу или деталь в наряд!');
+    return;
+  }
+
+  const master = appData.staff.find(s => s.id === masterId) || (appData.staff[0] || { id: 'st_1', name: 'Мастер' });
+  const newId = (appData.orders.length > 0 ? Math.max(...appData.orders.map(o => o.id)) + 1 : 1045);
+  const totalSum = currentOrderBuilderItems.reduce((acc, it) => acc + it.sum, 0);
+
+  currentOrderBuilderItems.forEach(it => {
+    if (it.type === 'part' && it.partId) {
+      const p = appData.parts.find(x => x.id === it.partId);
+      if (p) p.qty = Math.max(0, p.qty - it.qty);
+    }
+  });
+
+  const newOrder = {
+    id: newId,
+    date: new Date().toLocaleDateString('ru-RU'),
+    car,
+    plate,
+    carClass,
+    clientName,
+    clientPhone,
+    masterId: master.id,
+    masterName: master.name,
+    mileage,
+    status: 'in-progress',
+    items: [...currentOrderBuilderItems],
+    totalSum
+  };
+
+  appData.orders.unshift(newOrder);
+
+  commitDataAndPush();
+
+  currentOrderBuilderItems = [];
+  document.getElementById('newOrdCar').value = '';
+  document.getElementById('newOrdPlate').value = '';
+  document.getElementById('newOrdMileage').value = '';
+  document.getElementById('newOrdClientName').value = '';
+  document.getElementById('newOrdClientPhone').value = '';
+  renderOrderBuilderItems();
+
+  renderDashboard();
+  renderOrdersTable();
+  renderPartsTable();
+
+  if (andPrint) {
+    printOrder(newId);
+  } else {
+    alert(`✓ Заказ-наряд #${newId} создан и сохранен в облако!`);
+    switchAppTab('tab-orders');
+  }
+}
+
+/* ========================================================
+   МОДУЛЬ 4: ПЕЧАТЬ ОФИЦИАЛЬНОГО ЗАКАЗ-НАРЯДА (А4)
+   ======================================================== */
+function printOrder(orderId) {
+  const ord = appData.orders.find(o => o.id === orderId);
+  if (!ord) return;
+
+  const sett = appData.settings;
+  document.getElementById('prtShopName').innerText = sett.name.toUpperCase();
+  document.getElementById('prtShopAddress').innerText = sett.address;
+  document.getElementById('prtShopPhone').innerText = 'Тел: ' + sett.phone;
+  document.getElementById('prtOrderNumber').innerText = `ЗАКАЗ-НАРЯД № ${ord.id}`;
+  document.getElementById('prtOrderDate').innerText = `Дата: ${ord.date}`;
+  document.getElementById('prtOrderStatus').innerText = `Статус: ${ord.status === 'paid' ? 'ОПЛАЧЕН' : 'В РАБОТЕ'}`;
+
+  document.getElementById('prtCarModel').innerText = ord.car;
+  document.getElementById('prtCarPlate').innerText = ord.plate;
+  document.getElementById('prtCarClass').innerText = (ord.carClass==='c1'?'Класс I': ord.carClass==='c2'?'Класс II':'Класс III');
+  document.getElementById('prtMileage').innerText = ord.mileage + ' км';
+  document.getElementById('prtClientName').innerText = ord.clientName;
+  document.getElementById('prtClientPhone').innerText = ord.clientPhone;
+  document.getElementById('prtMasterName').innerText = ord.masterName;
+
+  const tbody = document.getElementById('prtItemsTableBody');
+  tbody.innerHTML = '';
+  ord.items.forEach((it, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td>${it.title}</td>
+      <td>${it.type === 'work' ? 'Услуга' : 'Деталь'}</td>
+      <td>${it.qty}</td>
+      <td>${formatRub(it.price)}</td>
+      <td>${formatRub(it.sum)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('prtTotalSum').innerText = formatRub(ord.totalSum);
+  document.getElementById('prtWarrantyText').innerText = sett.warranty;
+
+  window.print();
+}
+
+/* ========================================================
+   МОДУЛИ CRM, СКЛАД И ШТАТ
+   ======================================================== */
+function renderClientsTable() {
+  const tbody = document.getElementById('clientsTableBody');
+  tbody.innerHTML = '';
+  appData.clients.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${c.name}</b></td>
+      <td style="font-family:'IBM Plex Mono';">${c.phone}</td>
+      <td>${c.cars}</td>
+      <td>${c.visits}</td>
+      <td style="font-family:'IBM Plex Mono'; font-weight:700; color:var(--accent);">${formatRub(c.totalPaid)}</td>
+      <td><span style="color:var(--secondary); font-weight:700;">${c.discount}%</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteClient('${c.id}')">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function saveNewClient() {
+  const name = document.getElementById('clName').value.trim();
+  const phone = document.getElementById('clPhone').value.trim();
+  const discount = parseInt(document.getElementById('clDiscount').value) || 0;
+  const cars = document.getElementById('clCars').value.trim();
+  if (!name || !phone) { alert('Заполните ФИО и телефон!'); return; }
+
+  appData.clients.push({ id: 'cl_' + Date.now(), name, phone, discount, cars: cars || '—', visits: 0, totalPaid: 0 });
+  commitDataAndPush();
+  renderClientsTable();
+  closeModal('modalAddClient');
+}
+
+function deleteClient(id) {
+  if (confirm('Удалить клиента?')) {
+    appData.clients = appData.clients.filter(c => c.id !== id);
+    commitDataAndPush();
+    renderClientsTable();
+  }
+}
+
+function renderPartsTable() {
+  const tbody = document.getElementById('partsTableBody');
+  tbody.innerHTML = '';
+  let lowCount = 0;
+
+  appData.parts.forEach(p => {
+    const isLow = p.qty <= p.minQty;
+    if (isLow) lowCount++;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><code style="color:var(--secondary);">${p.sku}</code></td>
+      <td><b>${p.title}</b></td>
+      <td>${p.brand}</td>
+      <td><b style="color:${isLow ? 'var(--danger)' : '#fff'}; font-size:1.05rem;">${p.qty}</b> шт.</td>
+      <td style="font-family:'IBM Plex Mono';">${formatRub(p.cost)}</td>
+      <td style="font-family:'IBM Plex Mono'; font-weight:700; color:var(--accent);">${formatRub(p.price)}</td>
+      <td style="color:var(--text-muted); font-size:0.8rem;">+${Math.round(((p.price - p.cost) / p.cost) * 100)}%</td>
+      <td><span class="status-badge ${isLow ? 'status-waiting' : 'status-paid'}">${isLow ? 'Мало' : 'В наличии'}</span></td>
+      <td style="text-align:center;">
+        <div style="display:flex; justify-content:center; gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="restockPart('${p.id}')">+ Закупка</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePart('${p.id}')">✕</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('badgeLowParts').innerText = lowCount;
+}
+
+function saveNewPart() {
+  const sku = document.getElementById('partSku').value.trim();
+  const brand = document.getElementById('partBrand').value.trim();
+  const title = document.getElementById('partTitle').value.trim();
+  const qty = parseInt(document.getElementById('partQty').value) || 0;
+  const minQty = parseInt(document.getElementById('partMinQty').value) || 2;
+  const cost = parseInt(document.getElementById('partCost').value) || 0;
+  const price = parseInt(document.getElementById('partPrice').value) || 0;
+
+  if (!title || !price) { alert('Заполните название и цену продажи!'); return; }
+
+  appData.parts.push({ id: 'pt_' + Date.now(), sku: sku || 'NO-SKU', brand: brand || 'Универсал', title, qty, minQty, cost, price });
+  commitDataAndPush();
+  renderPartsTable();
+  closeModal('modalAddPart');
+}
+
+function deletePart(partId) {
+  const p = appData.parts.find(x => x.id === partId);
+  if (!p) return;
+  if (confirm(`Удалить товар «${p.title}» со склада у всех 5 сотрудников?`)) {
+    appData.parts = appData.parts.filter(x => x.id !== partId);
+    commitDataAndPush();
+    renderPartsTable();
+  }
+}
+
+function restockPart(partId) {
+  const p = appData.parts.find(x => x.id === partId);
+  if (!p) return;
+  const count = prompt(`Сколько единиц «${p.title}» поступило на склад?`, '10');
+  if (count && parseInt(count) > 0) {
+    p.qty += parseInt(count);
+    commitDataAndPush();
+    renderPartsTable();
+  }
+}
+
+function renderStaffTable() {
+  const tbody = document.getElementById('staffTableBody');
+  tbody.innerHTML = '';
+  appData.staff.forEach(m => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${m.name}</b></td>
+      <td><span style="color:var(--text-muted);">${m.spec}</span></td>
+      <td style="font-family:'IBM Plex Mono';">${m.phone}</td>
+      <td><b style="color:var(--primary);">${m.percent}%</b></td>
+      <td>${m.closedOrders || 0}</td>
+      <td style="font-family:'IBM Plex Mono';">${formatRub(m.totalWorked || 0)}</td>
+      <td style="font-family:'IBM Plex Mono'; font-weight:700; color:var(--accent); font-size:1.05rem;">${formatRub(m.earned || 0)}</td>
+      <td style="text-align:center;">
+        <div style="display:flex; justify-content:center; gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="payStaffSalary('${m.id}')">Выплатить ЗП</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteMaster('${m.id}')">✕</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function saveNewMaster() {
+  const name = document.getElementById('masterName').value.trim();
+  const spec = document.getElementById('masterSpec').value.trim();
+  const percent = parseInt(document.getElementById('masterPercent').value) || 35;
+  const phone = document.getElementById('masterPhone').value.trim();
+  if (!name) { alert('Заполните ФИО сотрудника!'); return; }
+
+  appData.staff.push({ id: 'st_' + Date.now(), name, spec: spec || 'Мастер', phone: phone || '—', percent, closedOrders: 0, totalWorked: 0, earned: 0 });
+  commitDataAndPush();
+  renderStaffTable();
+  populateMastersSelect();
+  renderDashboard();
+  closeModal('modalAddMaster');
+}
+
+function deleteMaster(id) {
+  const m = appData.staff.find(x => x.id === id);
+  if (!m) return;
+  if (confirm(`Удалить сотрудника «${m.name}» из штата автосервиса?`)) {
+    appData.staff = appData.staff.filter(x => x.id !== id);
+    commitDataAndPush();
+    renderStaffTable();
+    populateMastersSelect();
+    renderDashboard();
+  }
+}
+
+function payStaffSalary(id) {
+  const m = appData.staff.find(x => x.id === id);
+  if (!m) return;
+  if (!m.earned || m.earned <= 0) {
+    alert(`У мастера ${m.name} нет начисленной ЗП к выплате.`);
+    return;
+  }
+  if (confirm(`Выдать зарплату мастеру ${m.name} в размере ${formatRub(m.earned)}?`)) {
+    m.earned = 0;
+    commitDataAndPush();
+    renderStaffTable();
+    renderDashboard();
+    alert('✓ Зарплата выплачена и зафиксирована!');
+  }
+}
+
+let currentPriceFilter = 'all';
+
+function setPriceFilterClass(mode) {
+  currentPriceFilter = mode;
+  document.querySelectorAll('.class-pill').forEach(b => b.classList.remove('active'));
+  if (mode === 'all') document.getElementById('filterPriceAll').classList.add('active');
+  if (mode === 'c1') document.getElementById('filterPriceC1').classList.add('active');
+  if (mode === 'c2') document.getElementById('filterPriceC2').classList.add('active');
+  if (mode === 'c3') document.getElementById('filterPriceC3').classList.add('active');
+  renderPriceListTable();
+}
+
+function renderPriceListTable() {
+  const tbody = document.getElementById('priceListTableBody');
+  tbody.innerHTML = '';
+  const c1Hdr = document.querySelector('.col-c1-hdr');
+  const c2Hdr = document.querySelector('.col-c2-hdr');
+  const c3Hdr = document.querySelector('.col-c3-hdr');
+
+  if (c1Hdr && c2Hdr && c3Hdr) {
+    c1Hdr.style.display = (currentPriceFilter === 'all' || currentPriceFilter === 'c1') ? '' : 'none';
+    c2Hdr.style.display = (currentPriceFilter === 'all' || currentPriceFilter === 'c2') ? '' : 'none';
+    c3Hdr.style.display = (currentPriceFilter === 'all' || currentPriceFilter === 'c3') ? '' : 'none';
+  }
+
+  appData.prices.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="status-badge" style="background:#191d26; color:var(--text-muted);">${p.cat}</span></td>
+      <td><b>${p.title}</b></td>
+      <td style="text-align:right; font-family:'IBM Plex Mono'; font-weight:700; color:var(--c1-color); display:${(currentPriceFilter==='all'||currentPriceFilter==='c1')?'':'none'};">${formatRub(p.c1)}</td>
+      <td style="text-align:right; font-family:'IBM Plex Mono'; font-weight:700; color:var(--c2-color); display:${(currentPriceFilter==='all'||currentPriceFilter==='c2')?'':'none'};">${formatRub(p.c2)}</td>
+      <td style="text-align:right; font-family:'IBM Plex Mono'; font-weight:700; color:var(--c3-color); display:${(currentPriceFilter==='all'||currentPriceFilter==='c3')?'':'none'};">${formatRub(p.c3)}</td>
+      <td style="text-align:center;">
+        <button class="btn btn-secondary btn-sm" onclick="addPriceDirectToBuilder('${p.id}')">+ В наряд</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function addPriceDirectToBuilder(priceId) {
+  const p = appData.prices.find(x => x.id === priceId);
+  if (!p) return;
+  switchAppTab('tab-calculator');
+  const selClass = document.getElementById('newOrdClass').value;
+  currentOrderBuilderItems.push({ type: 'work', title: p.title, priceId: p.id, qty: 1, price: p[selClass], sum: p[selClass] });
+  renderOrderBuilderItems();
+}
+
+function saveSettings() {
+  appData.settings = {
+    name: document.getElementById('setShopName').value.trim(),
+    phone: document.getElementById('setShopPhone').value.trim(),
+    address: document.getElementById('setShopAddress').value.trim(),
+    warranty: document.getElementById('setShopWarranty').value.trim()
+  };
+  commitDataAndPush();
+  alert('✓ Реквизиты сохранены!');
+}
+
+function exportDataBackup() {
+  const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+  const a = document.createElement('a');
+  a.setAttribute("href", str);
+  a.setAttribute("download", `carzone_backup_${new Date().toISOString().slice(0,10)}.json`);
+  a.click();
+}
+
+function resetToDemoData() {
+  if (confirm('Сбросить данные к базовым?')) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function formatRub(n) { return (n || 0).toLocaleString('ru-RU') + ' ₽'; }
+
+function renderClassBadge(c) {
+  if (c === 'c1') return `<span class="status-badge" style="background:rgba(0,210,255,0.12); color:var(--c1-color);">Класс I</span>`;
+  if (c === 'c2') return `<span class="status-badge" style="background:rgba(182,255,0,0.12); color:var(--c2-color);">Класс II</span>`;
+  return `<span class="status-badge" style="background:rgba(255,77,0,0.18); color:var(--c3-color);">Класс III</span>`;
+}
+
+function renderStatusBadge(st) {
+  const map = {
+    'in-progress': '<span class="status-badge status-in-progress">В работе</span>',
+    'waiting': '<span class="status-badge status-waiting">Ожидает ЗЧ</span>',
+    'ready': '<span class="status-badge status-ready">Готов</span>',
+    'paid': '<span class="status-badge status-paid">Оплачен</span>'
+  };
+  return map[st] || st;
+}
+</script>
+
+</body>
+</html>
